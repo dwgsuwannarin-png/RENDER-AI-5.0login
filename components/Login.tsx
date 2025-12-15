@@ -5,7 +5,7 @@ import { auth } from '../firebase';
 import { Sparkles, LogIn, AlertCircle, Loader2 } from 'lucide-react';
 
 const Login: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,12 +15,17 @@ const Login: React.FC = () => {
     setError('');
     setLoading(true);
 
+    // Automatically append pseudo-domain if it's a simple username
+    const emailToUse = identifier.includes('@') 
+      ? identifier 
+      : `${identifier}@render.ai`;
+
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, emailToUse, password);
     } catch (err: any) {
       console.error(err);
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setError('Invalid email or password.');
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-email') {
+        setError('Invalid Username or Password.');
       } else if (err.code === 'auth/too-many-requests') {
         setError('Too many failed attempts. Please try again later.');
       } else {
@@ -53,14 +58,15 @@ const Login: React.FC = () => {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-zinc-400 mb-1.5 uppercase tracking-wider">Email</label>
+            <label className="block text-xs font-bold text-zinc-400 mb-1.5 uppercase tracking-wider">Username (ID)</label>
             <input
-              type="email"
+              type="text"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value.trim())}
               className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder-zinc-600"
-              placeholder="member@example.com"
+              placeholder="e.g. member01"
+              autoFocus
             />
           </div>
           

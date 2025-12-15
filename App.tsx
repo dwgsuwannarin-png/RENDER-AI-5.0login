@@ -443,6 +443,11 @@ const MainApp: React.FC = () => {
 
   const isProModelSelected = model.includes('gemini-3-pro') && !model.includes('optimized');
 
+  // Helper to display ID cleanly
+  const displayUsername = userProfile?.email?.endsWith('@render.ai') 
+      ? userProfile.email.split('@')[0] 
+      : userProfile?.email;
+
   return (
     <div className="flex h-screen bg-[#09090b] text-zinc-300 font-roboto overflow-hidden">
 
@@ -611,7 +616,7 @@ const MainApp: React.FC = () => {
 
                             {/* USER PROFILE INFO */}
                             <div className="mb-4 bg-zinc-900 rounded p-2 border border-white/5">
-                                <div className="text-xs font-bold text-white">{userProfile?.email}</div>
+                                <div className="text-xs font-bold text-white">{displayUsername}</div>
                                 <div className="flex items-center justify-between mt-1">
                                     <span className="text-[10px] text-zinc-500 uppercase">{userProfile?.role}</span>
                                     <button onClick={() => logout()} className="text-[10px] text-red-400 hover:text-red-300 flex items-center gap-1">

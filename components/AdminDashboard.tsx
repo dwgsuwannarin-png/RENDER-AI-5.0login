@@ -18,7 +18,7 @@ const AdminDashboard: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   
   // Create User Form State
-  const [newEmail, setNewEmail] = useState('');
+  const [newUsername, setNewUsername] = useState(''); // Changed from email
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<'MEMBER' | 'ADMIN'>('MEMBER');
   const [newExpiry, setNewExpiry] = useState('');
@@ -42,15 +42,19 @@ const AdminDashboard: React.FC = () => {
     const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
     const secondaryAuth = getAuth(secondaryApp);
 
+    // Auto-generate internal email from username
+    const username = newUsername.trim();
+    const emailToCreate = username.includes('@') ? username : `${username}@render.ai`;
+
     try {
       // 1. Create Auth User
-      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, newEmail, newPassword);
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, emailToCreate, newPassword);
       const uid = userCredential.user.uid;
 
       // 2. Create Firestore Profile
       const newUser: UserProfile = {
         uid,
-        email: newEmail,
+        email: emailToCreate,
         role: newRole,
         createdAt: Date.now(),
         passwordVersion: 1,
@@ -65,13 +69,21 @@ const AdminDashboard: React.FC = () => {
       await deleteApp(secondaryApp);
 
       setShowCreateModal(false);
-      setNewEmail('');
+      setNewUsername('');
       setNewPassword('');
       setNewExpiry('');
-      alert(`User created successfully!\n\nEmail: ${newEmail}\nPassword: ${newPassword}\n\nSend these credentials to the member.`);
+      alert(`User created successfully!\n\nID: ${username}\nPassword: ${newPassword}\n\nSend these credentials to the member.`);
     } catch (error: any) {
       console.error("Creation Error:", error);
-      alert("Error creating user: " + error.message);
+      if (error.code === 'auth/email-already-in-use') {
+        alert(`Failed: The ID "${username}" is already taken. Please choose a different one.`);
+      } else if (error.code === 'auth/weak-password') {
+        alert("Failed: Password must be at least 6 characters.");
+      } else if (error.code === 'auth/invalid-email') {
+        alert("Failed: Invalid ID format.");
+      } else {
+        alert("Error creating user: " + error.message);
+      }
     } finally {
       setIsCreating(false);
       // Ensure app is deleted even on error
@@ -112,6 +124,11 @@ const AdminDashboard: React.FC = () => {
     u.email.toLowerCase().includes(searchTerm.toLowerCase()) || 
     u.uid.includes(searchTerm)
   );
+
+  // Helper to display friendly username
+  const getDisplayUsername = (email: string) => {
+      return email.endsWith('@render.ai') ? email.split('@')[0] : email;
+  };
 
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-200 font-roboto p-6">
@@ -158,7 +175,7 @@ const AdminDashboard: React.FC = () => {
                   <table className="w-full text-left border-collapse">
                       <thead>
                           <tr className="bg-zinc-900/50 text-zinc-400 text-xs uppercase tracking-wider border-b border-white/5">
-                              <th className="p-4 font-bold">User</th>
+                              <th className="p-4 font-bold">User (ID)</th>
                               <th className="p-4 font-bold">Role</th>
                               <th className="p-4 font-bold">Status</th>
                               <th className="p-4 font-bold">Expiry Date</th>
@@ -175,7 +192,7 @@ const AdminDashboard: React.FC = () => {
                                   <tr key={user.uid} className="hover:bg-white/5 transition-colors group">
                                       <td className="p-4">
                                           <div className="flex flex-col">
-                                              <span className="font-bold text-white text-sm">{user.email}</span>
+                                              <span className="font-bold text-white text-sm">{getDisplayUsername(user.email)}</span>
                                               <span className="text-[10px] text-zinc-500 font-mono">{user.uid}</span>
                                           </div>
                                       </td>
@@ -240,13 +257,20 @@ const AdminDashboard: React.FC = () => {
                    
                    <form onSubmit={handleCreateUser} className="space-y-4">
                        <div>
-                           <label className="block text-xs font-bold text-zinc-400 mb-1">Email</label>
-                           <input type="email" required value={newEmail} onChange={e => setNewEmail(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-sm focus:border-blue-500 outline-none" placeholder="user@example.com" />
+                           <label className="block text-xs font-bold text-zinc-400 mb-1">Username (ID)</label>
+                           <input 
+                             type="text" 
+                             required 
+                             value={newUsername} 
+                             onChange={e => setNewUsername(e.target.value.trim())} 
+                             className="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-sm focus:border-blue-500 outline-none" 
+                             placeholder="e.g. member01" 
+                           />
+                           <p className="text-[10px] text-zinc-500 mt-1">This will be used for login. (No email required)</p>
                        </div>
                        <div>
                            <label className="block text-xs font-bold text-zinc-400 mb-1">Initial Password</label>
                            <input type="text" required value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-sm focus:border-blue-500 outline-none font-mono" placeholder="RandomString123" />
-                           <p className="text-[10px] text-zinc-500 mt-1">Copy this password. You will send it to the user.</p>
                        </div>
                        <div className="grid grid-cols-2 gap-4">
                            <div>
